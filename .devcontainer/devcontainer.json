@@ -1,0 +1,32 @@
+{
+  "name": "graphite-seg-ml",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".devcontainer"
+  },
+  "remoteUser": "vscode",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-toolsai.jupyter",
+        "ms-azuretools.vscode-docker",
+        "charliermarsh.ruff",
+        "github.vscode-github-actions"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.testing.pytestEnabled": true,
+        "python.formatting.provider": "black",
+        "ruff.lint.enable": true
+      }
+    }
+  },
+  "postCreateCommand": "pip install -U pip && if [ -f requirements.txt ]; then pip install -r requirements.txt; fi",
+  "containerEnv": {
+    "PYTHONUNBUFFERED": "1",
+    "PIP_DISABLE_PIP_VERSION_CHECK": "1"
+  },
+  "forwardPorts": [8888]
+}
