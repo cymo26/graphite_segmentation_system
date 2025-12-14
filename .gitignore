@@ -1,0 +1,39 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Środowiska wirtualne
+.env/
+venv/
+labeller_env/
+
+# System
+.DS_Store
+*.Zone.Identifier
+*:Zone.Identifier
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logi i modele
+logs/
+models/
+*.pt
+*.pth
+
+
+# Wykluczamy oryginalne obrazy JPG
+# ale NIE wykluczamy masek (*_mask.jpg) i JSONów
+App/data/raw/**/*.jpg
+!App/data/raw/**/*_mask.jpg
+
+# Wykluczamy split (można go wygenerować skryptem)
+App/data/processed/split/
+
+# Stare foldery data (jeśli istnieją poza App)
+data/raw/
+data/processed/
+#osobne repozytorium - nie potrzebne do wrzucenia
+django-labeller/
