@@ -19,3 +19,4 @@ Zobacz `requirements.txt`.
 
 ## Cel
 Zbadanie możliwości automatycznej oceny grafitu na obrazach mikrostruktur żeliwa przy użyciu konwolucyjnych sieci neuronowych.
+
