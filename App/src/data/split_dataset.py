@@ -108,12 +108,12 @@ def main():
     print(f" Katalog z maskami:  {masks_dir}")
     print(f" Katalog wyjściowy:  {output_dir}")
     
-    # Krok 1: Znajdź wszystkie obrazy
+    # Znajdź wszystkie obrazy
     print("\n Szukanie obrazów...")
     all_images = find_all_images(raw_dir)
     print(f"   Znaleziono {len(all_images)} obrazów")
     
-    # Krok 2: Walidacja par obraz-maska
+    # Walidacja par obraz-maska
     print("\n Walidacja par obraz-maska...")
     valid_pairs = validate_pairs(all_images, masks_dir, raw_dir)
     print(f"   Znaleziono {len(valid_pairs)} poprawnych par")
@@ -122,7 +122,7 @@ def main():
         print("\n Brak danych do podziału! Sprawdź ścieżki i nazwy plików.")
         return
     
-    # Krok 3: Podział danych
+    # Podział danych
     print(f"\n Podział danych (seed={RANDOM_STATE}):")
     print(f"   - Train: {TRAIN_RATIO*100:.0f}%")
     print(f"   - Val:   {VAL_RATIO*100:.0f}%")
@@ -135,7 +135,7 @@ def main():
         random_state=RANDOM_STATE
     )
     
-    # Drugi podział: val vs test (proporcje 50/50 z pozostałych 30%)
+    # Drugi podział: val vs test
     val_pairs, test_pairs = train_test_split(
         temp_pairs,
         train_size=VAL_RATIO / (VAL_RATIO + TEST_RATIO),  # 0.15 / 0.30 = 0.5
@@ -147,11 +147,11 @@ def main():
     print(f"   - Val:   {len(val_pairs)} obrazów ({len(val_pairs)/len(valid_pairs)*100:.1f}%)")
     print(f"   - Test:  {len(test_pairs)} obrazów ({len(test_pairs)/len(valid_pairs)*100:.1f}%)")
     
-    # Krok 4: Tworzenie struktury katalogów
+    # Tworzenie struktury katalogów
     print("\n Tworzenie struktury katalogów...")
     paths = create_output_structure(output_dir)
     
-    # Krok 5: Kopiowanie plików
+    # Kopiowanie plików
     print("\n Kopiowanie plików...")
     
     copy_files(train_pairs, paths['train_images'], paths['train_masks'], "Train")

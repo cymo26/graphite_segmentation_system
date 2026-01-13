@@ -32,7 +32,6 @@ def main():
 			continue
 		img_path = os.path.join(os.path.dirname(json_path), img_filename)
 		if not os.path.exists(img_path):
-			# Spróbuj bez :Zone.Identifier
 			img_path = img_path.split(':')[0]
 			if not os.path.exists(img_path):
 				print(f'Brak obrazu: {img_path}')

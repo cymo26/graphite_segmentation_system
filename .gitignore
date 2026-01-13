@@ -19,18 +19,13 @@ labeller_env/
 
 # Logi i modele
 logs/
-models/
 *.pt
 *.pth
 
 
 # Wykluczamy oryginalne obrazy JPG
-# ale NIE wykluczamy masek (*_mask.jpg) i JSONów
-App/data/raw/**/*.jpg
-!App/data/raw/**/*_mask.jpg
+App/data/
 
-# Wykluczamy split (można go wygenerować skryptem)
-App/data/processed/split/
 
 # Stare foldery data (jeśli istnieją poza App)
 data/raw/

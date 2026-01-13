@@ -3,4 +3,6 @@ numpy
 opencv-python
 matplotlib
 scikit-learn
+scikit-image
+pandas
 jupyter

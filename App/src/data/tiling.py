@@ -1,12 +1,11 @@
 """
-Skrypt do wykonywania tilingu obrazow i masek z obsluga overlap/halo.
-Dzieli obrazy i maski na mniejsze kafelki (tiles) dla sieci U-Net i DeepLabV3.
-
 Uzycie:
     python tiling.py
     python tiling.py --tile_size 256 --overlap 16 dla U-Net
     python tiling.py --tile_size 512 --overlap 32 dla DeepLabV3
-
+    Flaga --clean usuwa istniejace kafelki przed nowym tilingiem
+    Nazwa folderu wyjsciowego moze byc podana przez --output_name
+    (np. 'tiled_unet_256' lub 'tiled_deeplabv3_512')
 """
 
 import argparse
@@ -39,10 +38,6 @@ def calculate_tile_positions(
     tile_size: int,
     overlap: int
 ) -> List[Tuple[int, int]]:
-    """
-    Oblicza pozycje (x, y) lewego gornego rogu kazdego kafelka.
-    Kafelki sa rozmieszczone tak, aby pokryc caly obraz z zadanym overlap.
-    """
     width, height = image_size
     stride = tile_size - overlap
     
@@ -85,7 +80,6 @@ def extract_tile(
     position: Tuple[int, int],
     tile_size: int
 ) -> np.ndarray:
-    """Wycina kafelek z obrazu."""
     x, y = position
     return image[y:y + tile_size, x:x + tile_size].copy()
 
@@ -97,10 +91,6 @@ def process_single_image(
     overlap: int,
     is_mask: bool = False
 ) -> int:
-    """
-    Przetwarza pojedynczy obraz - dzieli go na kafelki.
-    Zwraca liczbe utworzonych kafelkow.
-    """
     if is_mask:
         image = cv2.imread(str(image_path), cv2.IMREAD_GRAYSCALE)
     else:
@@ -118,7 +108,7 @@ def process_single_image(
     tiles_folder = output_dir / image_name
     tiles_folder.mkdir(parents=True, exist_ok=True)
     
-    # informacje o tilingu (przydatne przy rekonstrukcji)
+    # informacje o tilingu
     info_file = tiles_folder / "tiling_info.txt"
     with open(info_file, 'w') as f:
         f.write(f"original_width={width}\n")
@@ -142,18 +132,18 @@ def process_split(
     split_dir: Path,
     tile_size: int,
     overlap: int,
-    clean: bool = False
+    clean: bool = False,
+    output_name: str = "tiled"
 ) -> dict:
-    """Przetwarza caly zbior (train/val/test)."""
     stats = {'images': 0, 'masks': 0, 'image_tiles': 0, 'mask_tiles': 0}
     
     # obrazy i maski sa w podfolderze raw/
     images_dir = split_dir / split_name / "images" / "raw"
     masks_dir = split_dir / split_name / "masks" / "raw"
     
-    # kafelki trafiaja do images/tiled i masks/tiled
-    tiled_images_dir = split_dir / split_name / "images" / "tiled"
-    tiled_masks_dir = split_dir / split_name / "masks" / "tiled"
+    # kafelki trafiaja do images/<output_name> i masks/<output_name>
+    tiled_images_dir = split_dir / split_name / "images" / output_name
+    tiled_masks_dir = split_dir / split_name / "masks" / output_name
     
     # wyczysc foldery tiled jesli --clean
     if clean:
@@ -196,10 +186,6 @@ def reconstruct_from_tiles(
     original_size: Tuple[int, int],
     blend: bool = True
 ) -> np.ndarray:
-    """
-    Rekonstruuje obraz z kafelkow.
-    Uzywa usredniania w obszarach nakladajacych sie (blending).
-    """
     width, height = original_size
     
     reconstructed = np.zeros((height, width), dtype=np.float32)
@@ -228,7 +214,6 @@ def reconstruct_from_tiles(
 
 
 def create_blend_weight(tile_size: int, overlap: int) -> np.ndarray:
-    """Tworzy maske wagowa dla blendingu."""
     weight_1d = np.ones(tile_size)
     
     if overlap > 0:
@@ -262,12 +247,22 @@ def main():
         "--clean", action="store_true",
         help="Usun istniejace kafelki przed nowym tilingiem"
     )
+    parser.add_argument(
+        "--output_name", type=str, default=None,
+        help="Nazwa folderu wyjsciowego (np. 'tiled_256' lub 'tiled_512_deeplabv3')"
+    )
     
     args = parser.parse_args()
     
-    print("=" * 60)
+    # Jesli nie podano output_name, zapytaj uzytkownika
+    if args.output_name is None:
+        print("\nPodaj nazwe folderu wyjsciowego dla kafelkow")
+        print(f"(np. 'tiled_unet_{args.tile_size}' lub 'tiled_deeplabv3_{args.tile_size}')")
+        args.output_name = input("Nazwa folderu [domyslnie: tiled]: ").strip()
+        if not args.output_name:
+            args.output_name = "tiled"
+    
     print("TILING OBRAZOW I MASEK")
-    print("=" * 60)
     
     split_dir = SPLIT_DIR.resolve()
     
@@ -276,6 +271,7 @@ def main():
     print(f"   - Rozmiar kafelka: {args.tile_size}x{args.tile_size}")
     print(f"   - Overlap (halo):  {args.overlap} px")
     print(f"   - Stride:          {args.tile_size - args.overlap} px")
+    print(f"   - Folder wyjsciowy: {args.output_name}")
     
     positions = calculate_tile_positions(
         (ORIGINAL_WIDTH, ORIGINAL_HEIGHT),
@@ -291,7 +287,7 @@ def main():
     
     for split_name in args.splits:
         print(f"\n{split_name.upper()}")
-        stats = process_split(split_name, split_dir, args.tile_size, args.overlap, args.clean)
+        stats = process_split(split_name, split_dir, args.tile_size, args.overlap, args.clean, args.output_name)
         
         for key in total_stats:
             total_stats[key] += stats[key]
@@ -299,22 +295,21 @@ def main():
         print(f"   Obrazy: {stats['images']} -> {stats['image_tiles']} kafelkow")
         print(f"   Maski:  {stats['masks']} -> {stats['mask_tiles']} kafelkow")
     
-    print("\n" + "=" * 60)
     print("TILING ZAKONCZONY")
-    print("=" * 60)
     print(f"\nPodsumowanie:")
     print(f"   - Przetworzono obrazow: {total_stats['images']}")
     print(f"   - Przetworzono masek:   {total_stats['masks']}")
     print(f"   - Utworzono kafelkow obrazow: {total_stats['image_tiles']}")
     print(f"   - Utworzono kafelkow masek:   {total_stats['mask_tiles']}")
     print(f"\nStruktura wyjsciowa:")
-    print(f"   split/train/images/tiled/<nazwa_obrazu>/tile_XXX.png")
-    print(f"   split/train/masks/tiled/<nazwa_maski>/tile_XXX.png")
+    print(f"   split/train/images/{args.output_name}/<nazwa_obrazu>/tile_XXX.png")
+    print(f"   split/train/masks/{args.output_name}/<nazwa_maski>/tile_XXX.png")
     
     print(f"\nWskazowki:")
-    print(f"   - Dla U-Net:      --tile_size 256 --overlap 32")
-    print(f"   - Dla DeepLabV3:  --tile_size 512 --overlap 64")
+    print(f"   - Dla U-Net:      --tile_size 256 --overlap 32 --output_name tiled_unet_256")
+    print(f"   - Dla DeepLabV3:  --tile_size 512 --overlap 64 --output_name tiled_deeplabv3_512")
     print(f"   - Flaga --clean usuwa istniejace kafelki przed nowym tilingiem.")
+    print(f"   - Mozesz miec wiele folderow z kafelkami dla roznych modeli.")
 
 
 if __name__ == "__main__":
