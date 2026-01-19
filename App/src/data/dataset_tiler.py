@@ -16,22 +16,16 @@ import cv2
 import numpy as np
 from tqdm import tqdm
 
-
-# KONFIGURACJA
-
 SCRIPT_DIR = Path(__file__).resolve().parent
 SPLIT_DIR = SCRIPT_DIR / ".." / ".." / "data" / "processed" / "split"
 
-# parametry tilingu
-DEFAULT_TILE_SIZE = 256  # rozmiar dla U-Net
+DEFAULT_TILE_SIZE = 256  # bazowo rozmiar dla U-Net
 DEFAULT_OVERLAP = 32     # overlap/halo w pikselach
 
-# rozmiar oryginalnych obrazow
 ORIGINAL_WIDTH = 2560
 ORIGINAL_HEIGHT = 1920
 
 
-# FUNKCJE TILINGU
 
 def calculate_tile_positions(
     image_size: Tuple[int, int],
@@ -49,12 +43,10 @@ def calculate_tile_positions(
         while x + tile_size <= width:
             positions.append((x, y))
             x += stride
-        # ostatni kafelek w rzedzie (jesli nie pokrywa prawej krawedzi)
         if positions and positions[-1][0] + tile_size < width:
             positions.append((width - tile_size, y))
         y += stride
     
-    # ostatni rzad (jesli nie pokrywa dolnej krawedzi)
     if positions and positions[-1][1] + tile_size < height:
         y = height - tile_size
         x = 0
@@ -64,7 +56,6 @@ def calculate_tile_positions(
         if positions[-1][0] + tile_size < width:
             positions.append((width - tile_size, y))
     
-    # usun duplikaty zachowujac kolejnosc
     seen = set()
     unique_positions = []
     for pos in positions:
@@ -103,12 +94,11 @@ def process_single_image(
     height, width = image.shape[:2]
     positions = calculate_tile_positions((width, height), tile_size, overlap)
     
-    # folder dla kafelkow tego obrazu
+    # folder dla kafelkow
     image_name = image_path.stem
     tiles_folder = output_dir / image_name
     tiles_folder.mkdir(parents=True, exist_ok=True)
     
-    # informacje o tilingu
     info_file = tiles_folder / "tiling_info.txt"
     with open(info_file, 'w') as f:
         f.write(f"original_width={width}\n")
@@ -117,7 +107,6 @@ def process_single_image(
         f.write(f"overlap={overlap}\n")
         f.write(f"num_tiles={len(positions)}\n")
     
-    # wytnij i zapisz kafelki
     for idx, (x, y) in enumerate(positions):
         tile = extract_tile(image, (x, y), tile_size)
         tile_name = f"tile_{idx:03d}_x{x}_y{y}.png"
@@ -137,22 +126,19 @@ def process_split(
 ) -> dict:
     stats = {'images': 0, 'masks': 0, 'image_tiles': 0, 'mask_tiles': 0}
     
-    # obrazy i maski sa w podfolderze raw/
     images_dir = split_dir / split_name / "images" / "raw"
     masks_dir = split_dir / split_name / "masks" / "raw"
     
-    # kafelki trafiaja do images/<output_name> i masks/<output_name>
     tiled_images_dir = split_dir / split_name / "images" / output_name
     tiled_masks_dir = split_dir / split_name / "masks" / output_name
     
-    # wyczysc foldery tiled jesli --clean
+    # --clean
     if clean:
         if tiled_images_dir.exists():
             shutil.rmtree(tiled_images_dir)
         if tiled_masks_dir.exists():
             shutil.rmtree(tiled_masks_dir)
     
-    # przetworz obrazy
     if images_dir.exists():
         image_files = list(images_dir.glob("*.jpg")) + list(images_dir.glob("*.png"))
         
@@ -163,7 +149,6 @@ def process_split(
             stats['images'] += 1
             stats['image_tiles'] += num_tiles
     
-    # przetworz maski
     if masks_dir.exists():
         mask_files = list(masks_dir.glob("*.jpg")) + list(masks_dir.glob("*.png"))
         
@@ -177,7 +162,6 @@ def process_split(
     return stats
 
 
-# FUNKCJA REKONSTRUKCJI (do uzycia przy predykcji)
 
 def reconstruct_from_tiles(
     tiles_folder: Path,
@@ -225,7 +209,6 @@ def create_blend_weight(tile_size: int, overlap: int) -> np.ndarray:
     return weight_2d
 
 
-# GLOWNA FUNKCJA
 
 def main():
     parser = argparse.ArgumentParser(
@@ -254,7 +237,6 @@ def main():
     
     args = parser.parse_args()
     
-    # Jesli nie podano output_name, zapytaj uzytkownika
     if args.output_name is None:
         print("\nPodaj nazwe folderu wyjsciowego dla kafelkow")
         print(f"(np. 'tiled_unet_{args.tile_size}' lub 'tiled_deeplabv3_{args.tile_size}')")

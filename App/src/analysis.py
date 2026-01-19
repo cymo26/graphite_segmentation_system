@@ -10,7 +10,6 @@ from matplotlib.patches import Patch
 import matplotlib.colors as mcolors
 
 
-# Klasy wielkości grafitu 
 SIZE_CLASSES = {
     1: (1000, float('inf')),   # > 1000 
     2: (500, 1000),            # 500-1000 
@@ -22,7 +21,6 @@ SIZE_CLASSES = {
     8: (0, 15),                # < 15 
 }
 
-# klasy wielkości
 SIZE_LABELS = {
     1: '>1000 µm',
     2: '500-1000 µm',
@@ -34,7 +32,6 @@ SIZE_LABELS = {
     8: '<15 µm',
 }
 
-# Formy grafitu wg normy
 GRAPHITE_FORMS = {
     'I': 'Płatkowy (lamellar)',
     'II': 'Rozetkowy (rosette)',
@@ -44,7 +41,6 @@ GRAPHITE_FORMS = {
     'VI': 'Sferoidalny regularny (regular nodular)',
 }
 
-# Etykiety tekstowe dla form (krótkie nazwy)
 FORM_LABELS = {
     'I': 'Płatkowy',
     'II': 'Rozetkowy',
@@ -54,7 +50,6 @@ FORM_LABELS = {
     'VI': 'Sferoid. reg.',
 }
 
-# Kolory do wizualizacji
 SIZE_COLORS = {
     1: '#FF0001',  # czerwony
     2: '#FF6600',  # pomarańczowy
@@ -76,7 +71,6 @@ FORM_COLORS = {
 }
 
 
-# STRUKTURY DANYCH
 
 @dataclass
 class ParticleFeatures:
@@ -98,8 +92,6 @@ class ParticleFeatures:
     form: str                   # Forma grafitu (I-VI)
 
 
-# EKSTRAKCJA CZĄSTEK
-
 def extract_particles(mask: np.ndarray, min_area_px: int = 10) -> Tuple[np.ndarray, List[dict]]:
    
     # Normalizacja maski do binarnej
@@ -108,48 +100,39 @@ def extract_particles(mask: np.ndarray, min_area_px: int = 10) -> Tuple[np.ndarr
     else:
         binary = (mask > 0.5).astype(np.uint8)
     
-    # Etykietowanie
     labeled_mask = measure.label(binary, connectivity=2)
     
-    # wlasnosci regionow
     regions = regionprops(labeled_mask)
     
-    # Filtruj małe cząstki
     valid_labels = [r.label for r in regions if r.area >= min_area_px]
     
-    # Stwórz nową maskę tylko z poprawnymi cząstkami
     filtered_mask = np.zeros_like(labeled_mask)
     for i, label in enumerate(valid_labels, start=1):
         filtered_mask[labeled_mask == label] = i
     
-    # Przelicz regiony
     regions = regionprops(filtered_mask)
     
     return filtered_mask, regions
 
 
-# OBLICZANIE CECH GEOMETRYCZNYCH
 
 def compute_feret_diameters(region) -> Tuple[float, float]:
   
-    # Pobierz współrzędne konturu
     coords = region.coords
     if len(coords) < 3:
         return 0, 0
     
-    # Znajdź convex hull
     try:
         hull = cv2.convexHull(coords[:, ::-1].astype(np.float32))
         if hull is None or len(hull) < 3:
             return region.major_axis_length, region.minor_axis_length
         
-        # Oblicz średnice Fereta przez rotating calipers
+        # średnica Fereta
         rect = cv2.minAreaRect(hull)
         width, height = rect[1]
         d_max = max(width, height)
         d_min = min(width, height)
         
-        # Fallback na major/minor axis
         if d_max == 0:
             d_max = region.major_axis_length
             d_min = region.minor_axis_length
@@ -166,10 +149,9 @@ def compute_convexity(region) -> float:
     if region.perimeter == 0:
         return 0
     
-    # Obwód convex hull
-    convex_perimeter = region.convex_image.sum()  # przybliżenie
+    # convex hull
+    convex_perimeter = region.convex_image.sum() 
     
-    # Dokładniejsze obliczenie przez kontury
     try:
         contours, _ = cv2.findContours(
             region.convex_image.astype(np.uint8), 
@@ -188,13 +170,11 @@ def compute_convexity(region) -> float:
 
 def compute_features(regions: List, scale_um_per_px: float, magnification_factor: float = 5.0) -> List[ParticleFeatures]:
     
-    # Przeskaluj do powiększenia 100×
     effective_scale = scale_um_per_px * magnification_factor
     
     features_list = []
     
     for region in regions:
-        # Średnice Fereta
         d_max_px, d_min_px = compute_feret_diameters(region)
         
         # Konwersja do um
@@ -243,16 +223,14 @@ def compute_features(regions: List, scale_um_per_px: float, magnification_factor
     return features_list
 
 
-# KLASYFIKACJA WIELKOŚCI
 
 def classify_size(d_max_um: float) -> int:
     for class_num, (min_val, max_val) in SIZE_CLASSES.items():
         if min_val <= d_max_um < max_val:
             return class_num
-    return 8  # Domyślnie najmniejsza klasa
+    return 8 
 
 
-# KLASYFIKACJA FORMY GRAFITU
 
 def classify_shape(roundness: float, aspect_ratio: float, 
                    convexity: float, solidity: float) -> str:
@@ -285,7 +263,6 @@ def classify_shape(roundness: float, aspect_ratio: float,
     return 'III'
 
 
-# STATYSTYKI GLOBALNE
 
 def summarize_results(features_list: List[ParticleFeatures]) -> Dict:
    
@@ -300,7 +277,6 @@ def summarize_results(features_list: List[ParticleFeatures]) -> Dict:
             'dataframe': pd.DataFrame()
         }
     
-    # Konwersja do DataFrame
     data = []
     for f in features_list:
         data.append({
@@ -321,7 +297,6 @@ def summarize_results(features_list: List[ParticleFeatures]) -> Dict:
     
     df = pd.DataFrame(data)
     
-    # Rozkład form (% na podstawie pola powierzchni)
     form_areas = {}
     for f in features_list:
         form_areas[f.form] = form_areas.get(f.form, 0) + f.area_um2
@@ -332,7 +307,6 @@ def summarize_results(features_list: List[ParticleFeatures]) -> Dict:
         for form, area in form_areas.items()
     }
     
-    # Rozkład klas wielkości (% na podstawie liczby cząstek)
     size_counts = {}
     for f in features_list:
         size_counts[f.size_class] = size_counts.get(f.size_class, 0) + 1
@@ -343,10 +317,8 @@ def summarize_results(features_list: List[ParticleFeatures]) -> Dict:
         for size, count in size_counts.items()
     }
     
-    # Dominująca forma (największy % powierzchni)
     dominant_form = max(form_distribution, key=form_distribution.get) if form_distribution else None
     
-    # Dominująca klasa wielkości (największa liczba cząstek)
     dominant_size_class = max(size_counts, key=size_counts.get) if size_counts else None
     
     return {
@@ -360,7 +332,6 @@ def summarize_results(features_list: List[ParticleFeatures]) -> Dict:
     }
 
 
-# WIZUALIZACJA
 
 def create_colored_mask(labeled_mask: np.ndarray, 
                         features_list: List[ParticleFeatures],
@@ -368,7 +339,6 @@ def create_colored_mask(labeled_mask: np.ndarray,
     h, w = labeled_mask.shape
     colored = np.zeros((h, w, 3), dtype=np.uint8)
     
-    # Mapowanie label
     label_to_features = {f.label: f for f in features_list}
     
     for label, features in label_to_features.items():
@@ -492,18 +462,14 @@ Analiza wg PN-EN ISO 945-1
     return fig
 
 
-# GŁÓWNA FUNKCJA ANALIZY
-
 def analyze_graphite(mask: np.ndarray, 
                      scale_um_per_px: float,
                      original_image: np.ndarray = None,
                      min_area_px: int = 10,
                      magnification: int = 500) -> Dict:
     
-    # do normy 100×
     magnification_factor = magnification / 100
     
-    # Ekstrakcja cząstek
     labeled_mask, regions = extract_particles(mask, min_area_px)
     
     if len(regions) == 0:
@@ -516,18 +482,15 @@ def analyze_graphite(mask: np.ndarray,
             'figure': None
         }
     
-    # Obliczanie cech geometrycznych
     features_list = compute_features(regions, scale_um_per_px, magnification_factor)
     
     
-    # Statystyki globalne
     summary = summarize_results(features_list)
     
-    # Wizualizacja
     colored_mask_size = create_colored_mask(labeled_mask, features_list, 'size')
     colored_mask_form = create_colored_mask(labeled_mask, features_list, 'form')
     
-    # Figura
+
     figure = create_analysis_figure(
         original_image, 
         colored_mask_size, 

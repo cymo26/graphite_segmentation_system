@@ -4,7 +4,6 @@ from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 
 
-# KONFIGURACJA ŚCIEŻEK I PARAMETRÓW
 
 # ścieżki plików
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -12,19 +11,15 @@ RAW_DIR = SCRIPT_DIR / ".." / ".." / "data" / "raw"
 MASKS_DIR = SCRIPT_DIR / ".." / ".." / "data" / "processed" / "masks"
 OUTPUT_DIR = SCRIPT_DIR / ".." / ".." / "data" / "processed" / "split"
 
-# podział danych
 TRAIN_RATIO = 0.70  # 70% trening
 VAL_RATIO = 0.15    # 15% walidacja
 TEST_RATIO = 0.15   # 15% testy
 
-# Seed
 RANDOM_STATE = 42
 
-# Rozszerzenia
 IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.bmp', '.tif', '.tiff'}
 
 
-# FUNKCJE POMOCNICZE
 
 def find_all_images(raw_dir: Path) -> list:
     
@@ -34,7 +29,6 @@ def find_all_images(raw_dir: Path) -> list:
         images.extend(raw_dir.rglob(f"*{ext}"))
         images.extend(raw_dir.rglob(f"*{ext.upper()}"))
     
-    # pomijamy pliki  :Zone.Identifier
     images = [img for img in images if ':Zone.Identifier' not in str(img)]
     
     return sorted(images)
@@ -91,15 +85,13 @@ def create_output_structure(output_dir: Path) -> dict:
 
 def copy_files(pairs: list, dest_images: Path, dest_masks: Path, desc: str):
     for image_path, mask_path in tqdm(pairs, desc=desc, unit="plików"):
-        # kopiujemy obraz
+
         shutil.copy2(image_path, dest_images / image_path.name)
-        # kopiujemy maskę
         shutil.copy2(mask_path, dest_masks / mask_path.name)
 
 def main():
     print("PODZIAŁ ZBIORU DANYCH NA TRAIN/VAL/TEST")
     
-    # Rozwiązujemy ścieżki absolutne
     raw_dir = RAW_DIR.resolve()
     masks_dir = MASKS_DIR.resolve()
     output_dir = OUTPUT_DIR.resolve()
@@ -108,12 +100,11 @@ def main():
     print(f" Katalog z maskami:  {masks_dir}")
     print(f" Katalog wyjściowy:  {output_dir}")
     
-    # Znajdź wszystkie obrazy
     print("\n Szukanie obrazów...")
     all_images = find_all_images(raw_dir)
     print(f"   Znaleziono {len(all_images)} obrazów")
     
-    # Walidacja par obraz-maska
+    # pary obraz-maska
     print("\n Walidacja par obraz-maska...")
     valid_pairs = validate_pairs(all_images, masks_dir, raw_dir)
     print(f"   Znaleziono {len(valid_pairs)} poprawnych par")
@@ -122,20 +113,19 @@ def main():
         print("\n Brak danych do podziału! Sprawdź ścieżki i nazwy plików.")
         return
     
-    # Podział danych
     print(f"\n Podział danych (seed={RANDOM_STATE}):")
     print(f"   - Train: {TRAIN_RATIO*100:.0f}%")
     print(f"   - Val:   {VAL_RATIO*100:.0f}%")
     print(f"   - Test:  {TEST_RATIO*100:.0f}%")
     
-    # Pierwszy podział: train vs (val + test)
+    # train vs (val + test)
     train_pairs, temp_pairs = train_test_split(
         valid_pairs,
         train_size=TRAIN_RATIO,
         random_state=RANDOM_STATE
     )
     
-    # Drugi podział: val vs test
+    # val vs test
     val_pairs, test_pairs = train_test_split(
         temp_pairs,
         train_size=VAL_RATIO / (VAL_RATIO + TEST_RATIO),  # 0.15 / 0.30 = 0.5
@@ -147,11 +137,8 @@ def main():
     print(f"   - Val:   {len(val_pairs)} obrazów ({len(val_pairs)/len(valid_pairs)*100:.1f}%)")
     print(f"   - Test:  {len(test_pairs)} obrazów ({len(test_pairs)/len(valid_pairs)*100:.1f}%)")
     
-    # Tworzenie struktury katalogów
     print("\n Tworzenie struktury katalogów...")
     paths = create_output_structure(output_dir)
-    
-    # Kopiowanie plików
     print("\n Kopiowanie plików...")
     
     copy_files(train_pairs, paths['train_images'], paths['train_masks'], "Train")
