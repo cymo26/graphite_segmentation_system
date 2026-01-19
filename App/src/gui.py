@@ -314,7 +314,6 @@ class GraphiteSegmentationApp:
         self.tiles_var.set("")
         self.status_var.set(f"Segmentacja: {model_name}...")
         
-        # Uruchom w osobnym watku
         thread = threading.Thread(target=self._segmentation_worker, args=(model_name,))
         thread.start()
     
@@ -429,28 +428,6 @@ class GraphiteSegmentationApp:
         thread = threading.Thread(target=self._analysis_worker, args=(scale,))
         thread.start()
     
-    def _analysis_worker(self, scale: float):
-        try:
-            # Konwertuj maske
-            mask_binary = (self.current_mask * 255).astype(np.uint8)
-            
-            # Przeprowadz analize
-            results = analyze_graphite(
-                mask=mask_binary,
-                scale_um_per_px=scale,
-                original_image=self.current_image_np,
-                min_area_px=10,
-                magnification=500
-            )
-            
-            # Wyswietl wyniki
-            if self.root.winfo_exists():
-                self.root.after(0, self._show_analysis_results, results)
-                
-        except Exception as e:
-            if self.root.winfo_exists():
-                self.root.after(0, self._analysis_error, str(e))
-    
     def _show_analysis_results(self, results: dict):
         self.analyze_btn.config(state=tk.NORMAL)
         
@@ -526,7 +503,6 @@ class GraphiteSegmentationApp:
         self.status_var.set("Blad analizy!")
         messagebox.showerror("Blad analizy", error_msg)
     
-    # EWALUACJA MASKI
     
     def _find_gt_mask_path(self):
         if self.current_image_path is None:

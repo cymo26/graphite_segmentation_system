@@ -4,14 +4,11 @@ from matplotlib.patches import Patch
 from typing import Tuple, Dict
 
 
-# METRYKI
 
 def compute_metrics(pred_mask: np.ndarray, gt_mask: np.ndarray) -> Dict[str, float]:
-    # Normalizacja do 0/1
     pred = (pred_mask > 127).astype(np.float32) if pred_mask.max() > 1 else pred_mask.astype(np.float32)
     gt = (gt_mask > 127).astype(np.float32) if gt_mask.max() > 1 else gt_mask.astype(np.float32)
     
-    # Podstawowe wartosci
     tp = np.sum((pred == 1) & (gt == 1))
     tn = np.sum((pred == 0) & (gt == 0))
     fp = np.sum((pred == 1) & (gt == 0))
@@ -19,21 +16,18 @@ def compute_metrics(pred_mask: np.ndarray, gt_mask: np.ndarray) -> Dict[str, flo
     
     total = tp + tn + fp + fn
     
-    # Metryki
     accuracy = (tp + tn) / total if total > 0 else 0
     precision = tp / (tp + fp) if (tp + fp) > 0 else 0
     recall = tp / (tp + fn) if (tp + fn) > 0 else 0
     f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
     
-    # IoU
+    # IoU and Dice
     intersection = tp
     union = tp + fp + fn
     iou = intersection / union if union > 0 else 0
     
-    # Dice
     dice = 2 * tp / (2 * tp + fp + fn) if (2 * tp + fp + fn) > 0 else 0
     
-    # Specificity
     specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
     
     return {
@@ -51,9 +45,7 @@ def compute_metrics(pred_mask: np.ndarray, gt_mask: np.ndarray) -> Dict[str, flo
     }
 
 
-# WIZUALIZACJA
 
-# Kolory
 COLORS = {
     'TP': [0, 255, 0],      # Zielony - TP
     'FP': [255, 0, 0],      # Czerwony - FP
@@ -63,7 +55,6 @@ COLORS = {
 
 
 def create_comparison_mask(pred_mask: np.ndarray, gt_mask: np.ndarray) -> np.ndarray:
-    # Normalizacja do 0/1
     pred = (pred_mask > 127).astype(np.uint8) if pred_mask.max() > 1 else pred_mask.astype(np.uint8)
     gt = (gt_mask > 127).astype(np.uint8) if gt_mask.max() > 1 else gt_mask.astype(np.uint8)
     
@@ -94,11 +85,9 @@ def create_overlay_image(original: np.ndarray, pred_mask: np.ndarray,
     
     comparison = create_comparison_mask(pred_mask, gt_mask)
     
-    # Konwersja do float
     orig_float = original.astype(np.float32)
     comp_float = comparison.astype(np.float32)
     
-    # Blendowanie tylko tam gdzie nie jest TN
     mask_non_tn = ~((pred_mask <= 127) & (gt_mask <= 127))
     if pred_mask.max() <= 1:
         mask_non_tn = ~((pred_mask == 0) & (gt_mask == 0))
@@ -193,23 +182,19 @@ METRYKI:
     return fig
 
 
-# GLOWNA FUNKCJA
 
 def evaluate_mask(pred_mask: np.ndarray, 
                   gt_mask: np.ndarray, 
                   original_image: np.ndarray = None) -> Dict:
     
-    # Sprawdz wymiary
     if pred_mask.shape[:2] != gt_mask.shape[:2]:
         raise ValueError(
             f"Wymiary masek sie nie zgadzaja: "
             f"pred={pred_mask.shape[:2]}, gt={gt_mask.shape[:2]}"
         )
     
-    # Oblicz metryki
     metrics = compute_metrics(pred_mask, gt_mask)
     
-    # Utworz maske porownawcza
     comparison_mask = create_comparison_mask(pred_mask, gt_mask)
     
     result = {
@@ -218,7 +203,6 @@ def evaluate_mask(pred_mask: np.ndarray,
         'figure': None
     }
     
-    # Utworz figure jesli mamy oryginalny obraz
     if original_image is not None:
         result['figure'] = create_evaluation_figure(
             original_image, pred_mask, gt_mask, metrics

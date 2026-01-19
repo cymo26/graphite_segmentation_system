@@ -79,15 +79,57 @@ pip install -r requirements.txt
 
 ## 🚀 Uruchomienie
 
+### Szybki start (Linux/Mac)
 ```bash
+# 1. Sklonuj repozytorium
+git clone https://github.com/cymo26/graphite_segmentation_system.git
+cd graphite_segmentation_system
+
+# 2. Utwórz i aktywuj środowisko wirtualne
+python3 -m venv labeller_env
+source labeller_env/bin/activate
+
+# 3. Zainstaluj zależności
+pip install -r requirements.txt
+
+# 4. Uruchom aplikację
 cd App/src
 python main.py
 ```
 
+### Szybki start (Windows)
+```powershell
+# 1. Sklonuj repozytorium
+git clone https://github.com/cymo26/graphite_segmentation_system.git
+cd graphite_segmentation_system
+
+# 2. Utwórz i aktywuj środowisko wirtualne
+python -m venv labeller_env
+labeller_env\Scripts\activate
+
+# 3. Zainstaluj zależności
+pip install -r requirements.txt
+
+# 4. Uruchom aplikację
+cd App\src
+python main.py
+```
+
+### Co się dzieje po uruchomieniu?
 Aplikacja automatycznie:
-- Wykrywa dostępność GPU (CUDA)
-- Ładuje wytrenowane modele z `App/src/models/`
-- Uruchamia interfejs graficzny
+- ✅ Wykrywa dostępność GPU (CUDA) — jeśli brak, używa CPU
+- ✅ Ładuje wytrenowane modele z `App/src/models/`
+- ✅ Kompiluje modele (`torch.compile`) dla przyspieszenia (PyTorch 2.0+)
+- ✅ Uruchamia okno interfejsu graficznego
+
+### Rozwiązywanie problemów
+
+| Problem | Rozwiązanie |
+|---------|-------------|
+| `ModuleNotFoundError: No module named 'torch'` | Upewnij się, że środowisko jest aktywne i uruchom `pip install -r requirements.txt` |
+| `CUDA not available` | Zainstaluj PyTorch z obsługą CUDA: `pip install torch --index-url https://download.pytorch.org/whl/cu118` |
+| `Nie znaleziono modeli` | Sprawdź czy pliki `.pth` istnieją w `App/src/models/` |
+| `Tkinter not found` (Linux) | Zainstaluj: `sudo apt-get install python3-tk` |
 
 ---
 
